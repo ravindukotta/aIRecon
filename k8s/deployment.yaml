@@ -25,7 +25,7 @@ spec:
         - name: aireconsile
           # The workflow replaces this placeholder with the current commit image.
           image: aireconsile:local
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 8080
