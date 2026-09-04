@@ -71,6 +71,18 @@ jobs:
     environment: Production
 
     steps:
+      # Map the GitHub environment secret to a shell environment variable.
+      # Never print secret values in workflow logs.
+      - name: Verify production secret
+        env:
+          DEPLOY_TOKEN: ${{ secrets.PRODUCTION_DEPLOY_TOKEN }}
+        run: |
+          if [ -z "$DEPLOY_TOKEN" ]; then
+            echo "::error::PRODUCTION_DEPLOY_TOKEN is not configured"
+            exit 1
+          fi
+          echo "Production deployment token is available."
+
       - name: Fake deployment to production
         run: |
           echo "Production deployment was approved."
