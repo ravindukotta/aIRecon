@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aireconsile
+  namespace: aireconsile
+spec:
+  # Recreate prevents two scheduled batch instances from overlapping during deployment.
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aireconsile
+  template:
+    metadata:
+      labels:
+        app: aireconsile
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: aireconsile
+          # The workflow replaces this placeholder with the current commit image.
+          image: aireconsile:local
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8080
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+          volumeMounts:
+            - name: output
+              mountPath: /app/output
+            - name: logs
+              mountPath: /app/logs
+      volumes:
+        - name: output
+          persistentVolumeClaim:
+            claimName: aireconsile-output
+        - name: logs
+          emptyDir: {}

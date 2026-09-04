@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: aireconsile
+  namespace: aireconsile
+spec:
+  selector:
+    app: aireconsile
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
