@@ -34,6 +34,24 @@ The app starts, seeds 5 demo rows into H2, and `exportJob` fires on its cron sch
 `OPENAI_API_KEY`, the AI report step fails fast and falls back to a note in
 `./output/report/report-<jobExecutionId>.md`; the CSV export itself is unaffected.
 
+The application listens on port `8080` and exposes Kubernetes-compatible probes:
+
+- `GET /health/live` returns `200` while the application is running.
+- `GET /health/ready` returns `200` when the database is reachable, or `503` otherwise.
+
+Example deployment probe configuration:
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /health/live
+    port: 8080
+readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: 8080
+```
+
 ## Full run (with ELK logging and AI reports)
 
 1. Start the ELK stack:
