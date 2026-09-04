@@ -49,3 +49,16 @@ jobs:
       # Package the application without repeating the tests from the previous job.
       - name: Build with Maven
         run: ./mvnw --batch-mode --no-transfer-progress package -DskipTests
+
+  deploy-dev:
+    # Simulate deployment only after the build succeeds.
+    needs: build
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - name: Fake deployment to development
+        run: |
+          echo "Starting fake deployment to development..."
+          echo "No application or infrastructure is being changed."
+          echo "Fake development deployment completed successfully."
