@@ -1,0 +1,31 @@
+name: CI
+
+# Run CI for every pushed commit and every pull request.
+on:
+  push:
+  pull_request:
+
+# The workflow only needs permission to read the repository contents.
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Download the repository onto the GitHub-hosted runner.
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      # Install the same Java version configured in pom.xml and cache Maven files.
+      - name: Set up Java 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      # Compile the application, run its tests, and perform Maven verification.
+      - name: Build and test with Maven
+        run: ./mvnw --batch-mode --no-transfer-progress verify

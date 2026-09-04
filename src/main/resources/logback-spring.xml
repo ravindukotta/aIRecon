@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>jobName</includeMdcKeyName>
+            <includeMdcKeyName>jobExecutionId</includeMdcKeyName>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/aireconsile.json.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/aireconsile.json.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>jobName</includeMdcKeyName>
+            <includeMdcKeyName>jobExecutionId</includeMdcKeyName>
+        </encoder>
+    </appender>
+
+    <!--
+        Ships logs directly to the Logstash TCP input (see docker-compose.yml / logstash/logstash.conf).
+        Internally queued and non-blocking: if Logstash/the ELK stack is down, log events are dropped
+        from this appender only after the queue fills, while CONSOLE/FILE keep working so local
+        diagnostics are never lost (see observability logging spec, "pipeline unavailable" scenario).
+        Always declared here, but ElkLoggingConfigurer detaches and stops it at startup unless
+        ELK_LOGGING_ENABLED=true, so local/test/CI runs (where Logstash isn't up) don't pay the TCP
+        reconnect loop cost or block JVM shutdown. Set that env var when docker compose is up.
+    -->
+    <appender name="LOGSTASH_TCP" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <destination>${LOGSTASH_HOST:-localhost}:${LOGSTASH_PORT:-5000}</destination>
+        <reconnectionDelay>5 seconds</reconnectionDelay>
+        <writeBufferSize>16384</writeBufferSize>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>jobName</includeMdcKeyName>
+            <includeMdcKeyName>jobExecutionId</includeMdcKeyName>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+        <appender-ref ref="LOGSTASH_TCP"/>
+    </root>
+</configuration>

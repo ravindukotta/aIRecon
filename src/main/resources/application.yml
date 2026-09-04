@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: aireconsile
+  batch:
+    job:
+      enabled: false
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        options:
+          model: ${OPENAI_MODEL:gpt-4o-mini}
+
+batch:
+  export:
+    cron: ${BATCH_EXPORT_CRON:0 */5 * * * *}
+    output-dir: ${BATCH_EXPORT_OUTPUT_DIR:./output/export}
+    chunk-size: ${BATCH_EXPORT_CHUNK_SIZE:50}
+  report:
+    output-dir: ${BATCH_REPORT_OUTPUT_DIR:./output/report}
