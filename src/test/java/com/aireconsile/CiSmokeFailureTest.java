@@ -7,7 +7,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 // Temporary: deliberately failing test to verify GitHub Actions CI reports failures. Remove after verification.
 class CiSmokeFailureTest {
 
-    @Test
+    //@Ignore
+    //@Test
     void deliberatelyFails() {
         assertThat(1 + 1).isEqualTo(3);
     }
