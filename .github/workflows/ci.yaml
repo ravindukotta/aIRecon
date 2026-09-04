@@ -1,0 +1,78 @@
+name: CI
+
+# Run CI for every pushed commit and every pull request.
+on:
+  push:
+  pull_request:
+
+# The workflow only needs permission to read the repository contents.
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Download the repository onto the GitHub-hosted runner.
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      # Install the same Java version configured in pom.xml and cache Maven files.
+      - name: Set up Java 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      # Compile and run the test suite with Maven Surefire.
+      - name: Run tests
+        run: ./mvnw --batch-mode --no-transfer-progress test
+
+  build:
+    # Build only after all tests have passed.
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      # Package the application without repeating the tests from the previous job.
+      - name: Build with Maven
+        run: ./mvnw --batch-mode --no-transfer-progress package -DskipTests
+
+  deploy-dev:
+    # Simulate deployment only after the build succeeds.
+    needs: build
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - name: Fake deployment to development
+        run: |
+          echo "Starting fake deployment to development..."
+          echo "No application or infrastructure is being changed."
+          echo "Fake development deployment completed successfully."
+
+  deploy-production:
+    # Production runs only for the default branch, after development deployment.
+    needs: deploy-dev
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment: Production
+
+    steps:
+      - name: Fake deployment to production
+        run: |
+          echo "Production deployment was approved."
+          echo "No application or infrastructure is being changed."
+          echo "Fake production deployment completed successfully."
