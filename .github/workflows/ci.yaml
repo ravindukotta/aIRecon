@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  build-and-test:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,6 +26,26 @@ jobs:
           java-version: '25'
           cache: maven
 
-      # Compile the application, run its tests, and perform Maven verification.
-      - name: Build and test with Maven
-        run: ./mvnw --batch-mode --no-transfer-progress verify
+      # Compile and run the test suite with Maven Surefire.
+      - name: Run tests
+        run: ./mvnw --batch-mode --no-transfer-progress test
+
+  build:
+    # Build only after all tests have passed.
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      # Package the application without repeating the tests from the previous job.
+      - name: Build with Maven
+        run: ./mvnw --batch-mode --no-transfer-progress package -DskipTests
