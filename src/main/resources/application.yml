@@ -11,6 +11,16 @@ spring:
         options:
           model: ${OPENAI_MODEL:gpt-4o-mini}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
 batch:
   export:
     cron: ${BATCH_EXPORT_CRON:0 */5 * * * *}
