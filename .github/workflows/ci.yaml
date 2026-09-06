@@ -30,6 +30,14 @@ jobs:
       - name: Run tests
         run: ./mvnw --batch-mode --no-transfer-progress test
 
+      - name: Set up Snyk
+        uses: snyk/actions/setup@master
+
+      - name: Scan Maven dependencies
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk test --file=pom.xml --severity-threshold=high
+
   build:
     # Build only after all tests have passed.
     needs: test
