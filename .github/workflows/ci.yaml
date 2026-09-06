@@ -30,6 +30,7 @@ jobs:
       - name: Run tests
         run: ./mvnw --batch-mode --no-transfer-progress test
 
+      #snyk setup
       - name: Set up Snyk
         uses: snyk/actions/setup@master
 
