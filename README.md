@@ -119,3 +119,23 @@ All of the following are environment-variable-backed (`application.yml`):
 
 Tests do not require Docker or an OpenAI key — the AI-dependent test class mocks `ChatClient`, and
 ELK log shipping is off by default.
+
+## Deployment image tracking
+
+On pushes to `master`, the Production job builds and scans the container, publishes
+`ghcr.io/<lowercase-owner>/aireconsile:<commit-sha>`, then commits that image reference
+to `k8s/deployment.yaml` on `master`. The initial `aireconsile:local` reference is replaced
+on the first successful run. Argo CD can later track this directory for deployment.
+
+The workflow uses GitHub's automatic `GITHUB_TOKEN` with `contents: write` and
+`packages: write`; no additional token secret is required. The repository's branch
+rules must permit this workflow to push to `master`. If pull requests are required,
+the image-update step needs a PR-based promotion flow instead. Token-generated pushes
+do not trigger another CI run.
+
+Production jobs run one at a time. If `master` has advanced since a run started, its
+image-update step fails rather than publishing an older deployment configuration;
+use the run for the latest `master` commit. Pushes never force overwrite remote changes.
+The existing Docker Desktop deployment still uses the locally tagged copy of the image
+until Argo CD takes over. Pulling a private GHCR image from a new node will require
+registry credentials in Kubernetes.
