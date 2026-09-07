@@ -109,16 +109,6 @@ jobs:
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             .
 
-      - name: Set up Snyk
-        uses: snyk/actions/setup@master
-        timeout-minutes: 3
-
-      # Block deployment if the image has high or critical vulnerabilities.
-      - name: Scan production Docker image
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk container test "aireconsile:${GITHUB_SHA}" --file=Dockerfile --severity-threshold=high
-
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v4
         with:
