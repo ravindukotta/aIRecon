@@ -4,55 +4,55 @@ metadata:
   name: aireconsile
   namespace: aireconsile
 spec:
-  # Recreate prevents two scheduled batch instances from overlapping during deployment.
-  strategy:
-    type: Recreate
   replicas: 1
   selector:
     matchLabels:
       app: aireconsile
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
         app: aireconsile
     spec:
+      containers:
+      - image: ghcr.io/ravindukotta/aireconsile:f23ce1f78eee892bda95946b83742cb250e556e1
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: http
+          periodSeconds: 10
+        name: aireconsile
+        ports:
+        - containerPort: 8080
+          name: http
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: http
+          periodSeconds: 10
+        resources: {}
+        startupProbe:
+          failureThreshold: 30
+          httpGet:
+            path: /actuator/health/liveness
+            port: http
+          periodSeconds: 2
+        volumeMounts:
+        - mountPath: /app/output
+          name: output
+        - mountPath: /app/logs
+          name: logs
       securityContext:
+        fsGroup: 10001
+        runAsGroup: 10001
         runAsNonRoot: true
         runAsUser: 10001
-        runAsGroup: 10001
-        fsGroup: 10001
-      containers:
-        - name: aireconsile
-          # Bootstrap image; CI commits the published GHCR reference after its first successful push.
-          image: aireconsile:local
-          imagePullPolicy: IfNotPresent
-          ports:
-            - name: http
-              containerPort: 8080
-          startupProbe:
-            httpGet:
-              path: /actuator/health/liveness
-              port: http
-            failureThreshold: 30
-            periodSeconds: 2
-          readinessProbe:
-            httpGet:
-              path: /actuator/health/readiness
-              port: http
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /actuator/health/liveness
-              port: http
-            periodSeconds: 10
-          volumeMounts:
-            - name: output
-              mountPath: /app/output
-            - name: logs
-              mountPath: /app/logs
       volumes:
-        - name: output
-          persistentVolumeClaim:
-            claimName: aireconsile-output
-        - name: logs
-          emptyDir: {}
+      - name: output
+        persistentVolumeClaim:
+          claimName: aireconsile-output
+      - emptyDir: {}
+        name: logs
+status: {}
