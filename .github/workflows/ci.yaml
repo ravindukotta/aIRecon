@@ -5,7 +5,7 @@ on:
   push:
   pull_request:
 
-# The workflow only needs permission to read the repository contents.
+# Production additionally publishes packages and commits the deployment image.
 permissions:
   contents: read
 
@@ -78,6 +78,12 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: [self-hosted, local-kubernetes]
     environment: Production
+    concurrency:
+      group: production-deployment
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      packages: write
 
     steps:
       - name: Check out repository
@@ -88,8 +94,20 @@ jobs:
           docker info
           kubectl --context docker-desktop cluster-info
 
+      - name: Set GHCR image reference
+        shell: bash
+        run: |
+          IMAGE_OWNER=$(printf '%s' "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          echo "GHCR_IMAGE=ghcr.io/${IMAGE_OWNER}/aireconsile:${GITHUB_SHA}" >> "$GITHUB_ENV"
+
       - name: Build production Docker image
-        run: docker build --tag "aireconsile:${GITHUB_SHA}" .
+        run: |
+          docker build \
+            --tag "aireconsile:${GITHUB_SHA}" \
+            --tag "$GHCR_IMAGE" \
+            --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            .
 
       - name: Set up Snyk
         uses: snyk/actions/setup@master
@@ -100,13 +118,52 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: snyk container test "aireconsile:${GITHUB_SHA}" --file=Dockerfile --severity-threshold=high
 
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish production Docker image
+        run: docker push "$GHCR_IMAGE"
+
+      # GITHUB_TOKEN pushes do not trigger another CI run.
+      - name: Commit published image to Git
+        shell: bash
+        run: |
+          git fetch origin master
+          if [ "$(git rev-parse FETCH_HEAD)" != "$GITHUB_SHA" ]; then
+            echo "::error::master has advanced. Run deployment from the latest master commit."
+            exit 1
+          fi
+
+          kubectl set image --local -f k8s/deployment.yaml \
+            "aireconsile=${GHCR_IMAGE}" -o yaml \
+            > "${RUNNER_TEMP}/gitops-deployment.yaml"
+          cp "${RUNNER_TEMP}/gitops-deployment.yaml" k8s/deployment.yaml
+
+          git add k8s/deployment.yaml
+          if git diff --cached --quiet; then
+            echo "Deployment already references the published image."
+            exit 0
+          fi
+
+          git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -m "Deploy aireconsile image ${GITHUB_SHA}"
+          # A normal push rejects concurrent changes; never force-push or rebase an old image.
+          git push origin HEAD:refs/heads/master
+
       - name: Create Kubernetes namespace
         run: kubectl --context docker-desktop apply -f k8s/namespace.yaml
 
       - name: Deploy to Docker Desktop Kubernetes
         run: |
-          sed "s|aireconsile:local|aireconsile:${GITHUB_SHA}|" \
-            k8s/deployment.yaml > "${RUNNER_TEMP}/deployment.yaml"
+          # Keep using the local image until deployment moves to Argo CD.
+          kubectl set image --local -f k8s/deployment.yaml \
+            "aireconsile=aireconsile:${GITHUB_SHA}" -o yaml \
+            > "${RUNNER_TEMP}/deployment.yaml"
 
           kubectl --context docker-desktop apply \
             -f k8s/persistent-volume-claim.yaml \

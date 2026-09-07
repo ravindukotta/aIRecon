@@ -23,7 +23,7 @@ spec:
         fsGroup: 10001
       containers:
         - name: aireconsile
-          # The workflow replaces this placeholder with the current commit image.
+          # Bootstrap image; CI commits the published GHCR reference after its first successful push.
           image: aireconsile:local
           imagePullPolicy: IfNotPresent
           ports:
