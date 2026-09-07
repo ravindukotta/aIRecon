@@ -12,7 +12,11 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: aireconsile
-  # Manual sync while GitHub Actions still deploys directly to Kubernetes.
+  # Argo CD deploys Git changes and restores configuration drift.
   syncPolicy:
+    automated:
+      enabled: true
+      prune: false
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true

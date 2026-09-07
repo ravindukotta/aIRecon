@@ -72,8 +72,8 @@ jobs:
           echo "No application or infrastructure is being changed."
           echo "Fake development deployment completed successfully."
 
-  deploy-production:
-    # Production runs on Docker Desktop Kubernetes after approval and dev deployment.
+  promote-production:
+    # Publish the image and update Git after approval; Argo CD deploys it.
     needs: deploy-dev
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: [self-hosted, local-kubernetes]
@@ -89,10 +89,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
-      - name: Verify local deployment tools
+      - name: Verify image and manifest tools
         run: |
           docker info
-          kubectl --context docker-desktop cluster-info
+          kubectl version --client
 
       - name: Set GHCR image reference
         shell: bash
@@ -103,7 +103,6 @@ jobs:
       - name: Build production Docker image
         run: |
           docker build \
-            --tag "aireconsile:${GITHUB_SHA}" \
             --tag "$GHCR_IMAGE" \
             --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
@@ -146,37 +145,11 @@ jobs:
           # A normal push rejects concurrent changes; never force-push or rebase an old image.
           git push origin HEAD:refs/heads/master
 
-      - name: Create Kubernetes namespace
-        run: kubectl --context docker-desktop apply -f k8s/namespace.yaml
-
-      - name: Deploy to Docker Desktop Kubernetes
+      - name: Summarize production promotion
         run: |
-          # Keep using the local image until deployment moves to Argo CD.
-          kubectl set image --local -f k8s/deployment.yaml \
-            "aireconsile=aireconsile:${GITHUB_SHA}" -o yaml \
-            > "${RUNNER_TEMP}/deployment.yaml"
-
-          kubectl --context docker-desktop apply \
-            -f k8s/persistent-volume-claim.yaml \
-            -f "${RUNNER_TEMP}/deployment.yaml" \
-            -f k8s/service.yaml
-
-          kubectl --context docker-desktop \
-            --namespace aireconsile \
-            rollout status deployment/aireconsile \
-            --timeout=180s
-
-      - name: Test deployed health endpoint
-        run: |
-          kubectl --context docker-desktop \
-            --namespace aireconsile \
-            port-forward service/aireconsile 18080:8080 \
-            > "${RUNNER_TEMP}/aireconsile-port-forward.log" 2>&1 &
-          PORT_FORWARD_PID=$!
-          trap 'kill "$PORT_FORWARD_PID"' EXIT
-
-          curl --fail --show-error --silent \
-            --retry 10 \
-            --retry-delay 2 \
-            --retry-connrefused \
-            http://127.0.0.1:18080/actuator/health
+          {
+            echo "Published image: ${GHCR_IMAGE}"
+            echo "Manifest commit: $(git rev-parse HEAD)"
+            echo "Argo CD deploys from master. Verify this revision is Synced and Healthy in Argo CD."
+            echo "CI success confirms publication and the Git update, not deployment health."
+          } >> "$GITHUB_STEP_SUMMARY"
