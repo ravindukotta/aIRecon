@@ -111,6 +111,7 @@ jobs:
 
       - name: Set up Snyk
         uses: snyk/actions/setup@master
+        timeout-minutes: 3
 
       # Block deployment if the image has high or critical vulnerabilities.
       - name: Scan production Docker image
