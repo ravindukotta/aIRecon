@@ -91,6 +91,15 @@ jobs:
       - name: Build production Docker image
         run: docker build --tag "aireconsile:${GITHUB_SHA}" .
 
+      - name: Set up Snyk
+        uses: snyk/actions/setup@master
+
+      # Block deployment if the image has high or critical vulnerabilities.
+      - name: Scan production Docker image
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk container test "aireconsile:${GITHUB_SHA}" --file=Dockerfile --severity-threshold=high
+
       - name: Create Kubernetes namespace
         run: kubectl --context docker-desktop apply -f k8s/namespace.yaml
 
