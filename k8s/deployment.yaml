@@ -16,7 +16,7 @@ spec:
         app: aireconsile
     spec:
       containers:
-      - image: ghcr.io/ravindukotta/aireconsile:f23ce1f78eee892bda95946b83742cb250e556e1
+      - image: ghcr.io/ravindukotta/aireconsile:f615a6d6b75c3887c568fe897eb209649c463346
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
