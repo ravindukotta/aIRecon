@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aireconsile
+  namespace: {{ .Release.Namespace | quote }}
+spec:
+  # Keep a single batch instance and prevent overlapping instances on rollout.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: aireconsile
+  template:
+    metadata:
+      labels:
+        app: aireconsile
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: aireconsile
+          image: {{ printf "%s:%s" .Values.image.repository (required "image.tag is required" .Values.image.tag) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.env }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+          volumeMounts:
+            - name: output
+              mountPath: /app/output
+            - name: logs
+              mountPath: /app/logs
+      volumes:
+        - name: output
+          persistentVolumeClaim:
+            claimName: aireconsile-output
+        - name: logs
+          emptyDir: {}

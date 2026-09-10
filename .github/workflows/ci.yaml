@@ -89,10 +89,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
-      - name: Verify image and manifest tools
+      - name: Verify Docker
         run: |
           docker info
-          kubectl version --client
 
       - name: Set GHCR image reference
         shell: bash
@@ -128,12 +127,15 @@ jobs:
             exit 1
           fi
 
-          kubectl set image --local -f k8s/deployment.yaml \
-            "aireconsile=${GHCR_IMAGE}" -o yaml \
-            > "${RUNNER_TEMP}/gitops-deployment.yaml"
-          cp "${RUNNER_TEMP}/gitops-deployment.yaml" k8s/deployment.yaml
+          # These keys are the image overrides in the production values file.
+          sed -E \
+            -e "s|^  repository:.*$|  repository: ${GHCR_IMAGE%:*}|" \
+            -e "s|^  tag:.*$|  tag: \"${GITHUB_SHA}\"|" \
+            charts/aireconsile/values-prod.yaml \
+            > "${RUNNER_TEMP}/gitops-values-prod.yaml"
+          cp "${RUNNER_TEMP}/gitops-values-prod.yaml" charts/aireconsile/values-prod.yaml
 
-          git add k8s/deployment.yaml
+          git add charts/aireconsile/values-prod.yaml
           if git diff --cached --quiet; then
             echo "Deployment already references the published image."
             exit 0

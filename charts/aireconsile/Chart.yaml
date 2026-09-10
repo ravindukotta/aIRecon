@@ -1,0 +1,5 @@
+apiVersion: v2
+name: aireconsile
+description: Scheduled batch export and AI reporting application.
+type: application
+version: 0.1.0

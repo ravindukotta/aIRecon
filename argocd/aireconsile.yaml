@@ -8,7 +8,11 @@ spec:
   source:
     repoURL: https://github.com/ravindukotta/aIRecon.git
     targetRevision: master
-    path: k8s
+    path: charts/aireconsile
+    helm:
+      releaseName: aireconsile
+      valueFiles:
+        - values-prod.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: aireconsile

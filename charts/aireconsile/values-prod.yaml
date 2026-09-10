@@ -1,0 +1,4 @@
+# CI updates this image after publishing to GHCR.
+image:
+  repository: ghcr.io/ravindukotta/aireconsile
+  tag: "f615a6d6b75c3887c568fe897eb209649c463346"

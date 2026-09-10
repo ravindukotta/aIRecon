@@ -124,8 +124,8 @@ ELK log shipping is off by default.
 
 On pushes to `master`, the Production promotion job builds the container, publishes
 `ghcr.io/<lowercase-owner>/aireconsile:<commit-sha>`, then commits that image reference
-to `k8s/deployment.yaml` on `master`. The initial `aireconsile:local` reference is replaced
-on the first successful run. Argo CD tracks this directory and automatically deploys
+to `charts/aireconsile/values-prod.yaml` on `master`. Argo CD renders the Helm chart
+at `charts/aireconsile` with these production values and automatically deploys
 the committed image. It also corrects configuration drift; automatic pruning is disabled.
 
 The workflow uses GitHub's automatic `GITHUB_TOKEN` with `contents: write` and
@@ -137,15 +137,16 @@ do not trigger another CI run.
 Production jobs run one at a time. If `master` has advanced since a run started, its
 image-update step fails rather than publishing an older deployment configuration;
 use the run for the latest `master` commit. Pushes never force overwrite remote changes.
-The self-hosted runner builds the image and uses `kubectl set image --local` to edit
-the manifest without connecting to Kubernetes. CI no longer applies resources,
+The self-hosted runner builds the image and updates the production Helm image values
+without connecting to Kubernetes. CI no longer applies resources,
 waits for a rollout, or runs a health smoke test. A successful CI run confirms image
 publication and promotion in Git; verify the reported manifest commit is Synced and
 Healthy in Argo CD to confirm deployment. Kubernetes continues to run the configured
 startup, readiness, and liveness probes. The GHCR package is public, so image-pull
 credentials are unnecessary.
 
-To activate automatic deployment, merge the workflow changes to `master` and let any
+To activate automatic deployment, commit the chart, Application, and workflow changes
+to `master` and let any
 older direct-deployment jobs finish, then apply the Application configuration once:
 
 ```bash
@@ -153,6 +154,6 @@ kubectl --context docker-desktop apply -f argocd/aireconsile.yaml
 ```
 
 This bootstrap command updates Argo CD's configuration. The Application watches only
-`k8s/`, so changes under `argocd/` must be applied separately. Subsequent image updates
+`charts/aireconsile/`, so changes under `argocd/` must be applied separately. Subsequent image updates
 are deployed automatically. After the next promotion, check the image and manifest
 commit in the GitHub job summary against Argo CD's deployed image and synced revision.
