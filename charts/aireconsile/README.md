@@ -1,9 +1,10 @@
 # aireconsile Helm chart
 
-This shared chart renders the existing Deployment, Service, and output PVC. Resource
+This shared chart renders the Namespace, Deployment, Service, and output PVC. Resource
 names and selectors remain stable for migration: `aireconsile` and `aireconsile-output`.
 Run one instance per namespace. The namespace comes from the Helm release namespace
-(Argo CD's destination namespace); the chart does not create a Namespace resource.
+(Argo CD's destination namespace). Declaring it in the chart keeps the existing
+Namespace in Argo CD's desired resources after migration from `k8s/`.
 
 The Deployment retains one replica, the `Recreate` strategy, health probes, non-root
 security context, persistent output, and ephemeral logs. Both environments run the
